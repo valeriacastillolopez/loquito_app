@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import '../design_tokens.dart';
 import '../phone_back_button.dart';
+import 'models/post_interaction.dart';
 import 'models/video_post.dart';
 import 'services/video_api.dart';
 import 'widgets/cat_tube_bottom_nav.dart';
 import 'widgets/video_card.dart';
 
-/// App ficticia "CatTube": feed vertical tipo shorts con los videos que
-/// entrega la API (Spring Boot + PostgreSQL).
 class CatTubeScreen extends StatefulWidget {
   const CatTubeScreen({super.key});
 
@@ -18,6 +17,10 @@ class CatTubeScreen extends StatefulWidget {
 class _CatTubeScreenState extends State<CatTubeScreen> {
   final PageController _controller = PageController();
   final VideoApi _api = VideoApi();
+
+  // Likes, comentarios y compartidos de cada video, guardados por id para
+
+  final Map<int, PostInteraction> _interactions = {};
 
   List<VideoPost> _posts = [];
   bool _loading = true;
@@ -45,7 +48,7 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'No se pudo conectar con la API.\n¿Está corriendo en el puerto 8080?';
+        _error = 'No se pudo conectar con la API.\n$e';
         _loading = false;
       });
     }
@@ -108,6 +111,10 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
         key: ValueKey(_posts[i].id),
         post: _posts[i],
         isActive: i == _page,
+        interaction: _interactions.putIfAbsent(
+          _posts[i].id,
+              () => PostInteraction(_posts[i].id),
+        ),
       ),
     );
   }
@@ -150,7 +157,7 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
               ),
             ),
 
-          // barra superior: volver + logo + pestañas
+          // barra superior para volver + logo + pestañas
           const Positioned(
             top: 44,
             left: 0,
