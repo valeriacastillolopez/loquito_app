@@ -20,5 +20,5 @@ INSERT INTO videos (username, tag, caption, hashtags, video_url, likes, comments
 ('@el_loquito_real', 'TEORÍA 2',
  'LA FUENTE DE LA PLAZA CAMBIA DE COLOR SEGÚN LO QUE PENSAMOS.',
  '#PruebaViva #MenteColectiva',
- 'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4',
+ 'https://raw.githubusercontent.com/valeriacastillolopez/loquito_app/main/fuente.mp4',
  1100, 304, 58);
