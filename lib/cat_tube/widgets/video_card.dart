@@ -461,11 +461,11 @@ class _Avatar extends StatelessWidget {
         border: Border.all(color: LoquitoTokens.catGreen, width: 2),
         color: LoquitoTokens.paperDark,
       ),
-      alignment: Alignment.center,
-      child: const Icon(
-        Icons.face_retouching_natural,
-        color: LoquitoTokens.ink,
-        size: 24,
+      child: ClipOval(
+        child: Image.asset(
+          'assets/images/loquito_avatar.png',
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }
