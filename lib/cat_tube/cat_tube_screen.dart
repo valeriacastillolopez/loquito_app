@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import '../app_transitions.dart';
 import '../design_tokens.dart';
 import '../phone_back_button.dart';
 import 'models/post_interaction.dart';
 import 'models/video_post.dart';
+import 'profile/profile_screen.dart';
 import 'services/video_api.dart';
 import 'widgets/cat_tube_bottom_nav.dart';
 import 'widgets/video_card.dart';
 
+/// App ficticia "CatTube": feed vertical tipo shorts con los videos que
+/// entrega la API (Spring Boot + PostgreSQL). Los likes, comentarios y
+/// compartidos viven en el teléfono mientras la app esté abierta.
 class CatTubeScreen extends StatefulWidget {
   const CatTubeScreen({super.key});
 
@@ -18,14 +23,17 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
   final PageController _controller = PageController();
   final VideoApi _api = VideoApi();
 
-  // Likes, comentarios y compartidos de cada video, guardados por id para
-
+  /// Likes, comentarios y compartidos de cada video, guardados por id para
+  /// que no se pierdan al deslizar ni al entrar al perfil.
   final Map<int, PostInteraction> _interactions = {};
 
   List<VideoPost> _posts = [];
   bool _loading = true;
   String? _error;
   int _page = 0;
+
+  /// true mientras otra pantalla (el perfil) está encima del feed.
+  bool _covered = false;
 
   @override
   void initState() {
@@ -52,6 +60,19 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _openProfile() async {
+    // pausa el video del feed para que no suene debajo del perfil
+    setState(() => _covered = true);
+    await Navigator.of(context).push(
+      openAppRoute(
+        ProfileScreen(posts: _posts, interactions: _interactions),
+      ),
+    );
+    if (!mounted) return;
+    // al volver, reanuda y refresca los likes que cambiaron en el perfil
+    setState(() => _covered = false);
   }
 
   @override
@@ -110,7 +131,7 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
       itemBuilder: (context, i) => VideoCard(
         key: ValueKey(_posts[i].id),
         post: _posts[i],
-        isActive: i == _page,
+        isActive: i == _page && !_covered,
         interaction: _interactions.putIfAbsent(
           _posts[i].id,
               () => PostInteraction(_posts[i].id),
@@ -157,7 +178,7 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
               ),
             ),
 
-          // barra superior para volver + logo + pestañas
+          // barra superior: volver + logo + pestañas
           const Positioned(
             top: 44,
             left: 0,
@@ -166,11 +187,11 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
           ),
 
           // navegación inferior de la app
-          const Positioned(
+          Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            child: CatTubeBottomNav(),
+            child: CatTubeBottomNav(onPerfil: _openProfile),
           ),
         ],
       ),

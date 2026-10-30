@@ -3,12 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/video_post.dart';
 
-// Cliente de la API de Spring Boot.
+// Cliente de la API
 class VideoApi {
-  // true = teléfono real (usa la IP de la PC); false = emulador o Windows.
-  static const bool telefonoReal = true;
+  // true = teléfono real (usa la IP de la compu) false = emulador o Windows
+  static const bool telefonoReal = false;
 
-  // IP de la pc comando ipconfig
+  // IP de la compu comando ipconfig
   static const String ipDeMiPc = '10.1.124.203';
 
   static String get baseUrl {
