@@ -6,10 +6,11 @@ import '../models/video_post.dart';
 // Cliente de la API
 class VideoApi {
   // true = teléfono real (usa la IP de la compu) false = emulador o Windows
-  static const bool telefonoReal = false;
+  static const bool telefonoReal = true
+  ;
 
   // IP de la compu comando ipconfig
-  static const String ipDeMiPc = '10.1.124.203';
+  static const String ipDeMiPc = '10.1.124.161';
 
   static String get baseUrl {
     if (telefonoReal) return 'http://$ipDeMiPc:8080';

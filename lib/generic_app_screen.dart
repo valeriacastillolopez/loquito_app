@@ -54,26 +54,30 @@ class GenericAppScreen extends StatelessWidget {
 }
 
 Widget _bodyFor(String title, Color accent) {
-  switch (title) {
-    case 'Teorías':
-      return _TheoriesBody(accent: accent);
-    case 'Mapa del Centro':
-      return _MapBody(accent: accent);
-    case 'Susurros':
-      return _ChatBody(accent: accent);
-    case 'Cámara':
-      return _CameraBody(accent: accent);
-    case 'Buscador':
-      return _SearchBody(accent: accent);
-    case 'Radio Libre':
-      return _RadioBody(accent: accent);
-    case 'Ajustes':
-      return _SettingsBody(accent: accent);
-    case 'Teléfono':
-      return _DialerBody(accent: accent);
-    default:
-      return const SizedBox.shrink();
+  // normaliza minúsculas, sin saltos de línea ni espacios repetidos
+  final key = title.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  if (key.contains('teor')) return _TheoriesBody(accent: accent);
+  if (key.contains('mapa')) return _MapBody(accent: accent);
+  if (key.contains('susurro')) return _ChatBody(accent: accent);
+  if (key.contains('cámara') || key.contains('camara')) {
+    return _CameraBody(accent: accent);
   }
+  if (key.contains('busca')) return _SearchBody(accent: accent);
+  if (key.contains('radio')) return _RadioBody(accent: accent);
+  if (key.contains('ajuste')) return _SettingsBody(accent: accent);
+  if (key.contains('tel')) return _DialerBody(accent: accent);
+
+  // Si llegas aquí, el nombre del ícono no coincide con ninguna pantalla.
+  return Padding(
+    padding: const EdgeInsets.only(top: 40),
+    child: Center(
+      child: Text(
+        'Sin contenido para "$title"',
+        style: LoquitoTokens.typewriter(size: 13, color: Colors.white54),
+      ),
+    ),
+  );
 }
 
 // Teorías
@@ -82,10 +86,13 @@ class _TheoriesBody extends StatelessWidget {
   final Color accent;
 
   static const _theories = [
-    ('Teoría #12', 'El reloj de la plaza atrasa a propósito.'),
-    ('Teoría #31', 'Las luces del puente parpadean en código.'),
-    ('Teoría #47', 'Las palomas son drones. Cuenten los cables.'),
-    ('Teoría #52', 'El autobús de las 7 nunca llega vacío ni lleno.'),
+    ('Teoría #1', 'La fuente cambia según tus pensamientos'),
+    ('Teoría #2', 'La fuente mantiene el equilibrio de la plaza'),
+    ('Teoría #3', 'La paloma es un dron espía'),
+    ('Teoría #4', 'Los puentes cambian de lugar durante la noche'),
+    ('Teoría #5', 'El WIFI se alimenta de las conversaciones'),
+    ('Teoría #6', 'Los gatos, mugrosos gatos'),
+    ('Teoría #7', 'Los puestos de comida sirven pa otra cosa'),
   ];
 
   @override
