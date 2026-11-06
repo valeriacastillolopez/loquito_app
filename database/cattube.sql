@@ -46,4 +46,9 @@ INSERT INTO videos (username, tag, caption, hashtags, video_url, likes, comments
  'PRUEBA: #78. LOS PUESTOS DE COMIDA SIRVEN PA OTRA COSA.',
  '#Hambre #Tacos #Secta #Carísimos',
  'https://raw.githubusercontent.com/valeriacastillolopez/loquito_app/main/LosTacos.mp4',
- 6458, 682, 5478);
+ 6458, 682, 5478),
+ ('@el_loquito_real', 'TEORÍA 8',
+  'PRUEBA: #78. LAS ALCANTARILLAS RESPIRAN.',
+  '#Miedo #Terror #Corre',
+  'https://raw.githubusercontent.com/valeriacastillolopez/loquito_app/main/Coladeras.mp4',
+  7634, 488, 45);
