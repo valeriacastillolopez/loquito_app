@@ -7,7 +7,7 @@ import '../widgets/video_card.dart';
 
 /// Visor a pantalla completa de los videos del perfil. Abre en el video
 /// que tocaste y deja deslizar entre los demás, con likes, comentarios y
-/// compartir funcionando igual que en el feed.
+/// compartir funcionando
 class VideoViewerScreen extends StatefulWidget {
   const VideoViewerScreen({
     super.key,
@@ -55,7 +55,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
                   isActive: i == _page,
                   interaction: widget.interactions.putIfAbsent(
                     post.id,
-                        () => PostInteraction(post.id),
+                        () => PostInteraction(liked: post.liked),
                   ),
                 );
               },
@@ -95,13 +95,13 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
             bottom: 0,
             child: CatTubeBottomNav(
               current: CatTubeTab.perfil,
-              // Inicio: cierra el visor y el perfil, y vuelve al feed
+              // cierra el visor y el perfil, y vuelve al feed
               onInicio: () {
                 final nav = Navigator.of(context);
                 nav.pop();
                 nav.pop();
               },
-              // Perfil: cierra solo el visor y vuelve al perfil
+              // cierra solo el visor y vuelve al perfil
               onPerfil: () => Navigator.of(context).pop(),
             ),
           ),
