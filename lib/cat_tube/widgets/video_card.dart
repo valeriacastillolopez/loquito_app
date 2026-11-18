@@ -6,8 +6,9 @@ import '../models/post_interaction.dart';
 import '../models/video_post.dart';
 import 'comments_sheet.dart';
 import 'share_sheet.dart';
+import '../services/video_api.dart';
 
-// Solo reproduce cuando [isActive] es true
+// Solo reproduce cuando isActive es true
 class VideoCard extends StatefulWidget {
   const VideoCard({
     super.key,
@@ -118,25 +119,47 @@ class _VideoCardState extends State<VideoCard> {
   }
 
   // ------------------------------------------------------------ comentarios
-  void _openComments() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => CommentsSheet(
-        comments: _it.comments,
-        totalCount: () => widget.post.comments + _it.addedComments,
-        onSend: (text) {
-          setState(() {
-            _it.comments.insert(
-              0,
-              PostComment(user: '@tu_usuario', text: text, time: 'ahora'),
-            );
-            _it.addedComments++;
-          });
-        },
-      ),
-    );
+  bool _busyComments = false;
+
+  Future<void> _openComments() async {
+    if (_busyComments) return;
+    _busyComments = true;
+
+    try {
+      if (!_it.commentsLoaded) {
+        try {
+          final loaded = await VideoApi().fetchComments(widget.post.id);
+          _it.comments
+            ..clear()
+            ..addAll(loaded);
+          _it.commentsLoaded = true;
+        } catch (_) {
+          _showToast('No se pudieron cargar los comentarios');
+        }
+      }
+      if (!mounted) return;
+
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => CommentsSheet(
+          comments: _it.comments,
+          totalCount: () => widget.post.comments + _it.addedComments,
+          onSend: (text) {
+            setState(() {
+              _it.comments.insert(
+                0,
+                PostComment(user: '@tu_usuario', text: text, time: 'ahora'),
+              );
+              _it.addedComments++;
+            });
+          },
+        ),
+      );
+    } finally {
+      _busyComments = false;
+    }
   }
 
   // -------------------------------------------------------------- compartir
@@ -178,7 +201,7 @@ class _VideoCardState extends State<VideoCard> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // --- el video (un toque pausa, doble toque da like) ---
+        // un toque pausa, doble toque like
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _togglePlay,
@@ -218,7 +241,7 @@ class _VideoCardState extends State<VideoCard> {
           ),
         ),
 
-        // huella grande del doble toque
+        // huella grande like del doble toque
         Center(
           child: IgnorePointer(
             child: AnimatedOpacity(
@@ -238,7 +261,7 @@ class _VideoCardState extends State<VideoCard> {
           ),
         ),
 
-        // estado: cargando / error / pausado
+        // cargando / error / pausado
         if (!ready)
           Center(
             child: failed
@@ -296,7 +319,7 @@ class _VideoCardState extends State<VideoCard> {
           ),
         ),
 
-        // contenido inferior: usuario + descripción + audio
+        // contenido inferior usuario + descripción + audio
         Positioned(
           left: 16,
           right: 86,
@@ -341,14 +364,10 @@ class _VideoCardState extends State<VideoCard> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  post.caption,
-                  style: LoquitoTokens.typewriter(
-                    size: 13,
-                    color: Colors.white,
-                    height: 1.35,
-                  ),
+                  post.titulo,
+                  style: LoquitoTokens.marker(size: 17, color: Colors.white),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   post.hashtags,
                   style: LoquitoTokens.typewriter(
@@ -390,7 +409,7 @@ class _VideoCardState extends State<VideoCard> {
               const SizedBox(height: 18),
               _SideAction(
                 icon: Icons.pets,
-                label: formatCount(post.likes + (_it.liked ? 1 : 0)),
+                label: formatCount(post.likes + (_it.liked ? 1 : 0) - (post.liked ? 1 : 0)),
                 color: _it.liked ? LoquitoTokens.catGreen : Colors.white,
                 scale: _likePop ? 1.4 : 1.0,
                 onTap: _toggleLike,

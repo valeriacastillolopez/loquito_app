@@ -10,16 +10,21 @@ import '../widgets/cat_tube_bottom_nav.dart';
 import '../widgets/share_sheet.dart';
 import 'profile_video_tile.dart';
 import 'video_viewer_screen.dart';
+import '../models/cat_tube_user.dart';
+import '../../session.dart';
+import '../services/video_api.dart';
+import '../widgets/user_switcher_sheet.dart';
 
-/// Perfil del loquito: su "expediente". Una ficha de papel pegada a un
-/// corcho, con sus estadísticas como sellos y sus videos como recortes.
+/// Perfil del loquito
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
     super.key,
+    required this.user,
     required this.posts,
     required this.interactions,
   });
 
+  final CatTubeUser user;
   final List<VideoPost> posts;
   final Map<int, PostInteraction> interactions;
 
@@ -31,15 +36,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _tab = 0; // 0 = pruebas, 1 = mis reacciones
   bool _joined = false;
   String? _toast;
+  late CatTubeUser _user = widget.user;
+  late List<VideoPost> _posts = widget.posts;
+  bool _switching = false;
 
-  bool _isLiked(VideoPost p) => widget.interactions[p.id]?.liked ?? false;
+  bool _isLiked(VideoPost p) => widget.interactions[p.id]?.liked ?? p.liked;
 
   List<VideoPost> get _visible =>
-      _tab == 0 ? widget.posts : widget.posts.where(_isLiked).toList();
+      _tab == 0 ? _posts : _posts.where(_isLiked).toList();
 
-  int get _totalReactions => widget.posts.fold<int>(
+  int get _totalReactions => _posts.fold<int>(
     0,
-        (sum, p) => sum + p.likes + (_isLiked(p) ? 1 : 0),
+        (sum, p) => sum + p.likes + (_isLiked(p) ? 1 : 0) - (p.liked ? 1 : 0),
   );
 
   // ---------------------------------------------------------------- acciones
@@ -53,7 +61,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
-    // al volver, los likes pudieron cambiar: refresca contadores y pestañas
+    // los likes pudieron cambiar, refresca contadores y pestañas
     if (mounted) setState(() {});
   }
 
@@ -63,7 +71,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted && _toast == message) setState(() => _toast = null);
     });
   }
+  Future<void> _openUserSwitcher() async {
+    final elegido = await showModalBottomSheet<CatTubeUser>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => UserSwitcherSheet(currentId: _user.id),
+    );
+    if (elegido != null && elegido.id != _user.id) _switchTo(elegido);
+  }
 
+  Future<void> _switchTo(CatTubeUser elegido) async {
+    setState(() => _switching = true);
+    try {
+      final videos = await VideoApi().fetchVideos(elegido.id);
+      if (!mounted) return;
+
+      CurrentUser.id = elegido.id;
+      widget.interactions.clear(); // el progreso (likes) es de cada usuario
+
+      setState(() {
+        _user = elegido;
+        _posts = videos;
+        _tab = 0;
+        _joined = false;
+        _switching = false;
+      });
+      _showToast('Ahora eres ${elegido.handle}');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _switching = false);
+      _showToast('No se pudo cambiar de usuario');
+    }
+  }
   void _toggleJoin() {
     setState(() => _joined = !_joined);
     _showToast(_joined
@@ -158,12 +198,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
                 SliverToBoxAdapter(
                   child: _ProfileCard(
-                    teorias: widget.posts.length,
+                    teorias: _posts.length,
                     reacciones: formatCount(_totalReactions),
                     joined: _joined,
                     onAvatarTap: _showPortrait,
                     onJoinTap: _toggleJoin,
                     onShareTap: _openShare,
+                    username: _user.username,
+                    handle: _user.handle,
+                    seguidores: formatCount(_user.seguidores),
                   ),
                 ),
                 SliverToBoxAdapter(
@@ -208,7 +251,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-          // degradado suave bajo la barra superior (no bloquea toques)
+          // degradado suave bajo la barra superior
           Positioned(
             top: 0,
             left: 0,
@@ -230,7 +273,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-          // barra superior: volver al inicio del teléfono + título
+          // volver al inicio del teléfono + título
+          // mientras se cambia de usuario: velo oscuro con indicador de carga
+          if (_switching)
+            const Positioned.fill(
+              child: AbsorbPointer(
+                child: ColoredBox(
+                  color: Color(0x88000000),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: LoquitoTokens.catGreen,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // barra superior: volver al inicio + selector de usuario
           Positioned(
             top: 44,
             left: 16,
@@ -240,11 +299,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const PhoneBackButton(),
                 Expanded(
                   child: Center(
-                    child: Text(
-                      'EXPEDIENTE',
-                      style: LoquitoTokens.marker(
-                        size: 20,
-                        color: LoquitoTokens.paper,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _switching ? null : _openUserSwitcher,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black38,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: LoquitoTokens.paper.withOpacity(0.35),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'EXPEDIENTE',
+                              style: LoquitoTokens.typewriter(
+                                size: 8,
+                                color: LoquitoTokens.paper.withOpacity(0.7),
+                                letterSpacing: 2,
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    _user.username,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: LoquitoTokens.marker(
+                                      size: 17,
+                                      color: LoquitoTokens.paper,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: LoquitoTokens.paper,
+                                  size: 22,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -287,7 +391,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-          // navegación inferior: Perfil seleccionado, Inicio regresa al feed
+          // Perfil seleccionado, Inicio regresa al feed
           Positioned(
             left: 0,
             right: 0,
@@ -303,7 +407,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// ============================================================ ficha de perfil
+// -------------------------------------------------- ficha de perfil
 class _ProfileCard extends StatelessWidget {
   const _ProfileCard({
     required this.teorias,
@@ -312,6 +416,9 @@ class _ProfileCard extends StatelessWidget {
     required this.onAvatarTap,
     required this.onJoinTap,
     required this.onShareTap,
+    required this.username,
+    required this.handle,
+    required this.seguidores,
   });
 
   final int teorias;
@@ -320,6 +427,9 @@ class _ProfileCard extends StatelessWidget {
   final VoidCallback onAvatarTap;
   final VoidCallback onJoinTap;
   final VoidCallback onShareTap;
+  final String username;
+  final String handle;
+  final String seguidores;
 
   @override
   Widget build(BuildContext context) {
@@ -356,14 +466,18 @@ class _ProfileCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'El Loquito',
+                              username,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: LoquitoTokens.marker(
                                 size: 24,
                                 color: LoquitoTokens.ink,
                               ),
                             ),
                             Text(
-                              '@el_loquito_real',
+                              handle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: LoquitoTokens.typewriter(
                                 size: 12,
                                 color: LoquitoTokens.inkSoft,
@@ -401,7 +515,7 @@ class _ProfileCard extends StatelessWidget {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Vigilante oficial del Centro desde siempre. '
+                      'Vigilante oficial del centro desde siempre. '
                           'Las palomas me miran, el semáforo me habla. '
                           'Yo solo sigo la evidencia.',
                       style: LoquitoTokens.typewriter(
@@ -421,8 +535,8 @@ class _ProfileCard extends StatelessWidget {
                         color: LoquitoTokens.string,
                         angle: -0.06,
                       ),
-                      const _Stamp(
-                        value: '48.2K',
+                      _Stamp(
+                        value: seguidores,
                         label: 'TESTIGOS',
                         color: LoquitoTokens.catGreenDark,
                         angle: 0.04,
@@ -574,7 +688,7 @@ class _AvatarPolaroid extends StatelessWidget {
   }
 }
 
-/// Estadística con forma de sello de goma, ligeramente girado.
+// Estadística con forma de sello de goma
 class _Stamp extends StatelessWidget {
   const _Stamp({
     required this.value,

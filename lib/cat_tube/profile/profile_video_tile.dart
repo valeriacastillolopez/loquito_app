@@ -49,7 +49,7 @@ class ProfileVideoTile extends StatelessWidget {
                     Expanded(child: _Thumb(post: post, liked: liked)),
                     const SizedBox(height: 8),
                     Text(
-                      post.caption,
+                      post.titulo,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: LoquitoTokens.typewriter(
@@ -68,7 +68,7 @@ class ProfileVideoTile extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          formatCount(post.likes + (liked ? 1 : 0)),
+                          formatCount(post.likes + (liked ? 1 : 0) - (post.liked ? 1 : 0)),
                           style: LoquitoTokens.typewriter(
                             size: 10.5,
                             color: LoquitoTokens.ink,
@@ -119,8 +119,7 @@ class ProfileVideoTile extends StatelessWidget {
   }
 }
 
-/// Miniatura: aún no hay imágenes de los videos, así que es un "negativo"
-/// oscuro con el número de teoría y un botón de reproducir.
+// por si da tiempo de poner miniaturas
 class _Thumb extends StatelessWidget {
   const _Thumb({required this.post, required this.liked});
 
