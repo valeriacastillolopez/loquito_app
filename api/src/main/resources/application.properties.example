@@ -1,5 +1,5 @@
-spring.datasource.url=jdbc:postgresql://localhost:5432/cattube
+spring.datasource.url=jdbc:postgresql://localhost:5433/loquito
 spring.datasource.username=postgres
-spring.datasource.password=contraEjemplo
+spring.datasource.password=contraEjemplo2
 spring.jpa.hibernate.ddl-auto=none
 server.port=8080
