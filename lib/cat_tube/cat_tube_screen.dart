@@ -8,10 +8,11 @@ import 'profile/profile_screen.dart';
 import 'services/video_api.dart';
 import 'widgets/cat_tube_bottom_nav.dart';
 import 'widgets/video_card.dart';
+import '../session.dart';
+import 'models/cat_tube_user.dart';
 
-/// App ficticia "CatTube": feed vertical tipo shorts con los videos que
-/// entrega la API (Spring Boot + PostgreSQL). Los likes, comentarios y
-/// compartidos viven en el teléfono mientras la app esté abierta.
+/// catTube feed vertical tipo shorts con los videos de la API Los likes, comentarios y
+/// compartidos viven en el teléfono mientras la app está abierta
 class CatTubeScreen extends StatefulWidget {
   const CatTubeScreen({super.key});
 
@@ -20,19 +21,20 @@ class CatTubeScreen extends StatefulWidget {
 }
 
 class _CatTubeScreenState extends State<CatTubeScreen> {
-  final PageController _controller = PageController();
+  final PageController _controller = PageController(keepPage: false);
   final VideoApi _api = VideoApi();
 
   /// Likes, comentarios y compartidos de cada video, guardados por id para
-  /// que no se pierdan al deslizar ni al entrar al perfil.
+  /// que no se pierdan al deslizar ni al entrar al perfil
   final Map<int, PostInteraction> _interactions = {};
 
   List<VideoPost> _posts = [];
+  CatTubeUser? _user;
   bool _loading = true;
   String? _error;
   int _page = 0;
 
-  /// true mientras otra pantalla (el perfil) está encima del feed.
+  /// true mientras otra pantalla (el perfil) está encima del feed
   bool _covered = false;
 
   @override
@@ -45,11 +47,23 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _page = 0;
     });
     try {
-      final posts = await _api.fetchVideos();
+      final usuarios = await _api.fetchUsers();
+      if (usuarios.isEmpty) throw Exception('No hay usuarios en la base');
+
+      // si el usuario activo no existe, usa el primero de la lista
+      final user = usuarios.firstWhere(
+            (u) => u.id == CurrentUser.id,
+        orElse: () => usuarios.first,
+      );
+      CurrentUser.id = user.id;
+
+      final posts = await _api.fetchVideos(user.id);
       if (!mounted) return;
       setState(() {
+        _user = user;
         _posts = posts;
         _loading = false;
       });
@@ -63,16 +77,23 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
   }
 
   Future<void> _openProfile() async {
+    final user = _user;
+    if (user == null) return; // todavía cargando
+
+    final idAntes = CurrentUser.id;
+
     // pausa el video del feed para que no suene debajo del perfil
     setState(() => _covered = true);
     await Navigator.of(context).push(
       openAppRoute(
-        ProfileScreen(posts: _posts, interactions: _interactions),
+        ProfileScreen(user: user, posts: _posts, interactions: _interactions),
       ),
     );
     if (!mounted) return;
-    // al volver, reanuda y refresca los likes que cambiaron en el perfil
     setState(() => _covered = false);
+
+    // si en el perfil se cambió de usuario, recarga el feed con sus videos
+    if (CurrentUser.id != idAntes) _load();
   }
 
   @override
@@ -134,7 +155,7 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
         isActive: i == _page && !_covered,
         interaction: _interactions.putIfAbsent(
           _posts[i].id,
-              () => PostInteraction(_posts[i].id),
+              () => PostInteraction(liked: _posts[i].liked),
         ),
       ),
     );
@@ -178,7 +199,7 @@ class _CatTubeScreenState extends State<CatTubeScreen> {
               ),
             ),
 
-          // barra superior: volver + logo + pestañas
+          // barra superior volver + logo + pestañas
           const Positioned(
             top: 44,
             left: 0,
